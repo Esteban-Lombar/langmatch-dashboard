@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LangMatch Dashboard</title>
+
+    <!-- ✅ Tailwind clásico (CDN, no instalación) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Configuración opcional de colores personalizados -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "accent": "#2563eb", // Azul principal
+              "bg": "#f9fafb",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+
+  <body class="bg-bg">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
