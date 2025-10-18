@@ -12,43 +12,60 @@ const getJSON = async (path) => {
   return res.json();
 };
 
-const fetchGlobalStats   = () => getJSON("/sala/stats/global");
-const fetchUserStats     = (userId) => getJSON(`/user/stats/${userId}`);
-const fetchUsersList     = () => getJSON("/user/listaUsers");
-const fetchActiveSessions= () => getJSON("/sala/activas");
-const exportSessionPDFUrl= (sessionId) => `${API_URL}/sala/session/${sessionId}/export-pdf`;
+const fetchGlobalStats    = () => getJSON("/sala/stats/global");
+const fetchUserStats      = (userId) => getJSON(`/user/stats/${userId}`);
+const fetchUsersList      = () => getJSON("/user/listaUsers");
+const fetchActiveSessions = () => getJSON("/sala/activas");
+const exportSessionPDFUrl = (sessionId) => `${API_URL}/sala/session/${sessionId}/export-pdf`;
 
 // --- UI helpers ---
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : "-");
 const cx  = (...a) => a.filter(Boolean).join(" ");
 
+// Convierte arrays mixtos (strings | objetos) a un string legible
+const listify = (arr, keys = ["name", "language", "level", "valor", "value"]) => {
+  if (!Array.isArray(arr) || arr.length === 0) return "-";
+  return arr
+    .map((item) => {
+      if (typeof item === "string" || typeof item === "number") return String(item);
+      if (item && typeof item === "object") {
+        for (const k of keys) if (item[k]) return String(item[k]);
+        // Si no coincide ninguna key conocida, como fallback:
+        return JSON.stringify(item);
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .join(", ");
+};
+
 export default function App() {
   // global
-  const [globalStats, setGlobalStats]       = useState(null);
-  const [globalErr, setGlobalErr]           = useState("");
+  const [globalStats, setGlobalStats] = useState(null);
+  const [globalErr, setGlobalErr] = useState("");
 
   // users
-  const [users, setUsers]                   = useState([]);
-  const [usersErr, setUsersErr]             = useState("");
-  const [usersLoading, setUsersLoading]     = useState(false);
+  const [users, setUsers] = useState([]);
+  const [usersErr, setUsersErr] = useState("");
+  const [usersLoading, setUsersLoading] = useState(false);
 
   // sessions
-  const [sessions, setSessions]             = useState([]);
-  const [sessionsErr, setSessionsErr]       = useState("");
-  const [sessionsLoading, setSessionsLoading]= useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [sessionsErr, setSessionsErr] = useState("");
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   // user stats
-  const [userId, setUserId]                 = useState("");
-  const [userStats, setUserStats]           = useState(null);
-  const [userStatsErr, setUserStatsErr]     = useState("");
+  const [userId, setUserId] = useState("");
+  const [userStats, setUserStats] = useState(null);
+  const [userStatsErr, setUserStatsErr] = useState("");
   const [userStatsLoading, setUserStatsLoading] = useState(false);
 
   // export
-  const [sessionId, setSessionId]           = useState("");
+  const [sessionId, setSessionId] = useState("");
 
   // filtros simples (client-side)
-  const [langFilter, setLangFilter]         = useState("");
-  const [levelFilter, setLevelFilter]       = useState("");
+  const [langFilter, setLangFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
 
   // ---- load global stats ----
   useEffect(() => {
@@ -64,7 +81,10 @@ export default function App() {
     };
     load();
     const id = setInterval(load, 20000);
-    return () => { alive = false; clearInterval(id); };
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, []);
 
   // ---- load users ----
@@ -126,12 +146,13 @@ export default function App() {
   };
 
   // ---- filters for sessions (client side) ----
-  const langs  = useMemo(() => Array.from(new Set(sessions.map(s => s.language))), [sessions]);
-  const levels = useMemo(() => Array.from(new Set(sessions.map(s => s.level))), [sessions]);
+  const langs = useMemo(() => Array.from(new Set(sessions.map((s) => s.language))), [sessions]);
+  const levels = useMemo(() => Array.from(new Set(sessions.map((s) => s.level))), [sessions]);
   const filteredSessions = useMemo(() => {
-    return sessions.filter(s =>
-      (!langFilter || s.language === langFilter) &&
-      (!levelFilter || s.level === levelFilter)
+    return sessions.filter(
+      (s) =>
+        (!langFilter || s.language === langFilter) &&
+        (!levelFilter || s.level === levelFilter)
     );
   }, [sessions, langFilter, levelFilter]);
 
@@ -148,7 +169,10 @@ export default function App() {
             </div>
           </div>
           <button
-            onClick={() => { loadUsers(); loadSessions(); }}
+            onClick={() => {
+              loadUsers();
+              loadSessions();
+            }}
             className="text-sm px-3 py-1.5 rounded-lg border hover:bg-white"
           >
             Refrescar
@@ -170,7 +194,14 @@ export default function App() {
               <CardStat label="Usuarios Registrados" value={globalStats.totalUsuarios} />
               <CardStat label="Idioma Más Usado" value={globalStats.idiomaMasPracticado} />
               <CardStat label="Nivel Más Elegido" value={globalStats.nivelMasElegido} />
-              <CardStat label="Duración Promedio" value={`${globalStats.promedioDuracionMin} min`} />
+              <CardStat
+                label="Duración Promedio"
+                value={
+                  typeof globalStats.promedioDuracionMin === "number"
+                    ? `${Number(globalStats.promedioDuracionMin).toFixed(2)} min`
+                    : `${globalStats.promedioDuracionMin} min`
+                }
+              />
             </div>
           )}
         </section>
@@ -194,17 +225,36 @@ export default function App() {
           </div>
           {userStatsErr && <p className="text-red-600 text-sm mb-2">{userStatsErr}</p>}
           {userStats ? (
-            <div className="bg-gray-50 p-3 rounded-lg text-sm">
-              <p><b>Total de Sesiones:</b> {userStats.totalSesiones ?? "-"}</p>
-              <p><b>Total Mensajes Usuario:</b> {userStats.totalMensajesUsuario ?? "-"}</p>
-              <p><b>Total Mensajes Bot:</b> {userStats.totalMensajesBot ?? "-"}</p>
-              <p><b>Promedio Duración:</b> {userStats.promedioDuracionMin ?? "-"} min</p>
-              <p><b>Idiomas:</b> {userStats.idiomas?.join(", ") || "-"}</p>
-              <p><b>Niveles:</b> {userStats.niveles?.join(", ") || "-"}</p>
-              <p><b>Última sesión:</b> {userStats.ultimaSesion || "-"}</p>
+            <div className="bg-gray-50 p-3 rounded-lg text-sm leading-6">
+              <p>
+                <b>Total de Sesiones:</b> {userStats.totalSesiones ?? "-"}
+              </p>
+              <p>
+                <b>Total Mensajes Usuario:</b> {userStats.totalMensajesUsuario ?? "-"}
+              </p>
+              <p>
+                <b>Total Mensajes Bot:</b> {userStats.totalMensajesBot ?? "-"}
+              </p>
+              <p>
+                <b>Promedio Duración:</b>{" "}
+                {typeof userStats.promedioDuracionMin === "number"
+                  ? `${Number(userStats.promedioDuracionMin).toFixed(2)} min`
+                  : `${userStats.promedioDuracionMin ?? "-"} min`}
+              </p>
+              <p>
+                <b>Idiomas:</b> {listify(userStats.idiomas)}
+              </p>
+              <p>
+                <b>Niveles:</b> {listify(userStats.niveles)}
+              </p>
+              <p>
+                <b>Última sesión:</b> {userStats.ultimaSesion || "-"}
+              </p>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Ingresa un <b>userId</b> y presiona Consultar.</p>
+            <p className="text-sm text-gray-500">
+              Ingresa un <b>userId</b> y presiona Consultar.
+            </p>
           )}
         </section>
 
@@ -212,7 +262,10 @@ export default function App() {
         <section className="lg:col-span-2 bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">👥 Usuarios</h2>
-            <button onClick={loadUsers} className="text-sm px-3 py-1 rounded-lg border hover:bg-white">
+            <button
+              onClick={loadUsers}
+              className="text-sm px-3 py-1 rounded-lg border hover:bg-white"
+            >
               {usersLoading ? "Cargando..." : "Recargar"}
             </button>
           </div>
@@ -231,13 +284,19 @@ export default function App() {
                 {users.map((u) => (
                   <tr key={u.userId} className="hover:bg-gray-50">
                     <td className="px-3 py-2">{u.userId}</td>
-                    <td className="px-3 py-2">{`${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()}</td>
+                    <td className="px-3 py-2">
+                      {`${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "-"}
+                    </td>
                     <td className="px-3 py-2">{u.email ?? "-"}</td>
                     <td className="px-3 py-2">{fmt(u.createdAt)}</td>
                   </tr>
                 ))}
                 {users.length === 0 && !usersLoading && (
-                  <tr><td colSpan={4} className="px-3 py-4 text-center text-gray-500">Sin usuarios</td></tr>
+                  <tr>
+                    <td colSpan={4} className="px-3 py-4 text-center text-gray-500">
+                      Sin usuarios
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -248,7 +307,10 @@ export default function App() {
         <section className="bg-white rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">🟢 Sesiones activas</h2>
-            <button onClick={loadSessions} className="text-sm px-3 py-1 rounded-lg border hover:bg-white">
+            <button
+              onClick={loadSessions}
+              className="text-sm px-3 py-1 rounded-lg border hover:bg-white"
+            >
               {sessionsLoading ? "Cargando..." : "Recargar"}
             </button>
           </div>
@@ -261,7 +323,11 @@ export default function App() {
               onChange={(e) => setLangFilter(e.target.value)}
             >
               <option value="">Idioma (todos)</option>
-              {langs.map((l) => <option key={l} value={l}>{l}</option>)}
+              {langs.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
             </select>
             <select
               className="border rounded-lg px-3 py-2 text-sm"
@@ -269,11 +335,18 @@ export default function App() {
               onChange={(e) => setLevelFilter(e.target.value)}
             >
               <option value="">Nivel (todos)</option>
-              {levels.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
+              {levels.map((lv) => (
+                <option key={lv} value={lv}>
+                  {lv}
+                </option>
+              ))}
             </select>
             {(langFilter || levelFilter) && (
               <button
-                onClick={() => { setLangFilter(""); setLevelFilter(""); }}
+                onClick={() => {
+                  setLangFilter("");
+                  setLevelFilter("");
+                }}
                 className="text-sm px-3 py-2 rounded-lg border hover:bg-white"
               >
                 Limpiar
@@ -326,7 +399,11 @@ export default function App() {
                   </tr>
                 ))}
                 {filteredSessions.length === 0 && !sessionsLoading && (
-                  <tr><td colSpan={7} className="px-3 py-4 text-center text-gray-500">Sin sesiones activas</td></tr>
+                  <tr>
+                    <td colSpan={7} className="px-3 py-4 text-center text-gray-500">
+                      Sin sesiones activas
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -360,10 +437,12 @@ export default function App() {
 function CardStat({ label, value }) {
   return (
     <div className="p-3 border rounded-lg text-center">
-      <p className={cx(
-        "font-semibold",
-        typeof value === "number" ? "text-2xl text-blue-600" : "text-lg text-blue-600"
-      )}>
+      <p
+        className={cx(
+          "font-semibold",
+          typeof value === "number" ? "text-2xl text-blue-600" : "text-lg text-blue-600"
+        )}
+      >
         {value ?? "-"}
       </p>
       <p className="text-xs text-gray-500">{label}</p>
